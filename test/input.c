@@ -2,7 +2,7 @@ int main()
 {
     int a = 1;
     int x = 123;
-    float y = 0.5;
+    float y = .5;
     char z = 'C';
     bool flag = 1;
     int array[5] = {1, 2, 3, 4, 5};

@@ -2,18 +2,18 @@ import sys
 
 # Dicionário de palavras reservadas conforme especificado na Tabela 1 do trabalho.
 # Mapeia o lexema (string encontrada) para o token correspondente.
-PALAVRAS_RESERVADAS = {
+RESERVED_WORDS = {
     "int": "INTDEF",       
     "float": "FLOATDEF",  
-    "char": "DEFCHAR",     # Ajustado conforme solicitado
-    "bool": "DEFBOOL",     # Ajustado conforme solicitado
+    "char": "DEFCHAR",  
+    "bool": "DEFBOOL",   
     "return": "RETURN",  
-    "If": "IF",   # Especificado no PDF como 'If'
-    "if": "IF"    # Adicionado para robustez
+    "If": "IF",   # Como está no PDF, mas pode ser "if" iremos adicionar abaixo dependendo do caso
+    "if": "IF"  
 }
 
 # Dicionário para tokens de caractere único (símbolos especiais e operadores simples).
-TOKENS_SIMPLES = {
+SIMPLE_TOKENS = {
     "(": "LParenteses",    
     ")": "RParenteses",    
     "{": "LChave",         
@@ -29,36 +29,36 @@ TOKENS_SIMPLES = {
     ";": "PVirgula"        
 }
 
-class AnalisadorLexico:
+class LexicalAnalyzer:
     """
     Implementação de um Analisador Léxico baseado em Autômato Finito Determinístico (AFD).
     O analisador lê o código fonte caractere por caractere e agrupa lexemas em tokens.
     """
-    def __init__(self, codigo_fonte):
-        self.codigo = codigo_fonte
-        self.tamanho = len(codigo_fonte)
-        self.cursor = 0   # Aponta para a posição atual de leitura no código
-        self.tokens_encontrados = []
+    def __init__(self, source_code):
+        self.code = source_code
+        self.length = len(source_code)
+        self.cursor = 0   # Aponta para a posição inicial de leitura no código
+        self.found_tokens = []
         
         # Variável de estado para contexto semântico simples
         # Armazena qual foi o último tipo declarado (int, bool, float, char)
         # para decidir se 0 ou 1 devem ser NUM_INT ou BOOL_TYPE.
-        self.ultimo_tipo_declarado = None 
+        self.last_declared_type = None 
 
-    def proximo_char(self):
+    def peek_char(self):
         """Retorna o caractere na posição atual sem avançar o cursor (Lookahead)."""
-        if self.cursor < self.tamanho:
-            return self.codigo[self.cursor]
+        if self.cursor < self.length:
+            return self.code[self.cursor]
         return None
 
-    def consumir_char(self):
+    def consume_char(self):
         """Retorna o caractere atual e avança o cursor (Consumo da fita de entrada)."""
-        char = self.proximo_char()
+        char = self.peek_char()
         if char is not None:
             self.cursor += 1
         return char
 
-    def voltar_cursor(self):
+    def backtrack_cursor(self):
         """
         Retrocede o cursor em uma posição.
         Fundamental para implementar transições de 'outro' (other).
@@ -66,210 +66,242 @@ class AnalisadorLexico:
         if self.cursor > 0:
             self.cursor -= 1
 
-    def analisar(self):
+    def analyze(self):
         """Loop principal que consome todo o arquivo gerando a lista de tokens."""
-        while self.cursor < self.tamanho:
-            token = self.get_proximo_token()
+        while self.cursor < self.length:
+            token = self.get_next_token()
             if token:
-                self.tokens_encontrados.append(token)
-        return self.tokens_encontrados
+                self.found_tokens.append(token)
+        return self.found_tokens
 
-    def get_proximo_token(self):
+    def get_next_token(self):
         """
         Método central que implementa a lógica do AFD.
         A variável 'estado_atual' rastreia em qual nó do grafo o autômato se encontra.
         """
-        estado_atual = 0  # Estado Inicial (Q0)
-        lexema = ""
+        current_state = 0  # Estado Inicial (Q0)
+        lexeme = ""
 
         while True:
-            char = self.consumir_char()
+            char = self.consume_char()
             
             # Condição de parada: Fim do arquivo (EOF)
             if char is None:
-                if estado_atual != 0:
+                if current_state != 0:
                     pass 
                 else:
                     return None
                 
             # --- Lógica do Estado 0 (Inicial) ---
-            if estado_atual == 0:
+            if current_state == 0:
                 if char is None: return None
-                
+                # Lê a linha até encontrar um caractere branco
                 if char.isspace():
                     continue 
 
-                lexema += char 
+                lexeme += char 
 
                 # Tratamento de literais char (ex: 'a') -> Retorna CHAR_TYPE
+                # Se tiver aspas simples, consome o próximo caractere e verifica o fechamento
+                # Caso seja válido, retorna CHAR_TYPE, senão, erro léxico.
                 if char == "'": 
-                    conteudo = self.consumir_char()
-                    fecha_aspas = self.consumir_char()
-                    if fecha_aspas == "'":
+                    content = self.consume_char()
+                    closing_quote = self.consume_char()
+                    if closing_quote == "'":
                         return "CHAR_TYPE" # Literal caractere sempre retorna CHAR_TYPE
                     else:
-                        print(f"Erro: Char mal formado. Esperado ['] mas lido [{fecha_aspas}]")
+                        print(f"Error: Malformed char. Expected ['] but read [{closing_quote}]")
                         return None
 
                 # Transições do Estado 0 baseadas no caractere lido:
                 elif char.isdigit():
-                    estado_atual = 1   # Vai para estado de Inteiro
+                    # Se o caractere for dígito, vai para estado de Inteiro
+                    # ou seja começa a ler um número inteiro
+                    current_state = 1   # Vai para estado de Inteiro
                 elif char.isalpha():
-                    estado_atual = 4   # Vai para estado de Identificador/Palavra Reservada
+                    # Se for letra, vai para estado de Identificador/Palavra Reservada
+                    current_state = 4   # Vai para estado de Identificador/Palavra Reservada
                 elif char == '.':
-                    estado_atual = 2   # Início de float sem parte inteira (ex: .5)
+                    # Se começar com ponto, vai para estado de float
+                    # (Item extra não pedido e não aceito em C)
+                    current_state = 2   # Início de float sem parte inteira (ex: .5)
                 
                 # Transições para Operadores
-                elif char == '>': estado_atual = 19
-                elif char == '<': estado_atual = 20
-                elif char == '=': estado_atual = 21
-                elif char == '!': estado_atual = 22
-                elif char == '&': estado_atual = 24
-                elif char == '|': estado_atual = 23
-                elif char == '/': estado_atual = 17 
+                elif char == '>': current_state = 19
+                elif char == '<': current_state = 20
+                elif char == '=': current_state = 21
+                elif char == '!': current_state = 22
+                elif char == '&': current_state = 24
+                elif char == '|': current_state = 23
+                elif char == '/': current_state = 17 
                 
-                elif char in TOKENS_SIMPLES:
-                    return TOKENS_SIMPLES[char]
+                # Tokens de caractere único
+                elif char in SIMPLE_TOKENS:
+                    return SIMPLE_TOKENS[char]
                 
                 else:
-                    print(f"Erro Léxico: Caractere inválido '{char}'")
+                    print(f"Lexical Error: Invalid character '{char}'")
                     return None
 
             # --- Estado 1: Lendo Inteiro ---
-            elif estado_atual == 1:
+            elif current_state == 1:
                 if char is not None and char.isdigit():
-                    lexema += char
+                    lexeme += char
                 elif char == '.':
-                    lexema += char
-                    estado_atual = 2 
+                    lexeme += char
+                    current_state = 2 
                 else:
                     # O número acabou.
-                    if char is not None: self.voltar_cursor()
+                    if char is not None: self.backtrack_cursor()
                     
                     # Lógica de Contexto solicitada:
                     # Se for 0 ou 1, verificamos se estamos num contexto de bool ou int
-                    if (lexema == "0" or lexema == "1") and self.ultimo_tipo_declarado == "DEFBOOL":
+                    if (lexeme == "0" or lexeme == "1") and self.last_declared_type == "BOOLDEF":
                         return "BOOL_TYPE"
                         
                     return "NUM_INT" 
 
             # --- Estado 2: Ponto Detectado ---
-            elif estado_atual == 2:
+            elif current_state == 2:
                 if char is not None and char.isdigit():
-                    lexema += char
-                    estado_atual = 3 # Confirma float
+                    lexeme += char
+                    current_state = 3 # Confirma float
                 else:
-                    print(f"Erro Léxico: Float mal formado '{lexema}'")
+                    print(f"Lexical Error: Malformed float '{lexeme}'")
                     return None
 
             # --- Estado 3: Corpo do Float ---
-            elif estado_atual == 3:
+            elif current_state == 3:
                 if char is not None and char.isdigit():
-                    lexema += char
+                    lexeme += char
                 else:
-                    if char is not None: self.voltar_cursor()
+                    # Se o número acabou
+                    if char is not None: self.backtrack_cursor()
                     return "NUM_FLOAT" 
 
             # --- Estado 4: Identificadores e Palavras Reservadas ---
-            elif estado_atual == 4:
+            elif current_state == 4:
                 if char is not None and (char.isalnum()):
-                    lexema += char
+                    lexeme += char
                 else:
-                    if char is not None: self.voltar_cursor()
+                    if char is not None: self.backtrack_cursor()
                     
                     # Verifica se é palavra reservada
-                    if lexema in PALAVRAS_RESERVADAS:
-                        token = PALAVRAS_RESERVADAS[lexema]
+                    if lexeme in RESERVED_WORDS:
+                        token = RESERVED_WORDS[lexeme]
                         
                         # MEMÓRIA DE CONTEXTO:
                         # Se encontramos uma palavra que define tipo, atualizamos o estado
-                        if token in ["INTDEF", "FLOATDEF", "DEFCHAR", "DEFBOOL"]:
-                            self.ultimo_tipo_declarado = token
+                        if token in ["INTDEF", "FLOATDEF", "CHARDEF", "BOOLDEF"]:
+                            self.last_declared_type = token
                             
                         return token
                     
                     return "VAR"
 
             # --- Estados de Operadores (19, 20, 21, 22, 17, 24, 23) ---
-            elif estado_atual == 19: # > ou >=
+            elif current_state == 19: # > ou >=
+                # Se o próximo caractere for '=', é GEQ (maior igual)
+                # senão, é GT (maior que)
                 if char == '=': return "GEQ"
                 else:
-                    if char is not None: self.voltar_cursor()
+                    if char is not None: self.backtrack_cursor()
                     return "GT"
 
-            elif estado_atual == 20: # < ou <=
+            elif current_state == 20: # < ou <=
+                # Se o próximo caractere for '=', é LEQ (menor igual)
+                # senão, é LT (menor que)
                 if char == '=': return "LEQ"
                 else:
-                    if char is not None: self.voltar_cursor()
+                    if char is not None: self.backtrack_cursor()
                     return "LT"
 
-            elif estado_atual == 21: # = ou ==
+            elif current_state == 21: # = ou ==
+                # Se o próximo caractere for '=', é EQ (igualdade)
+                # senão, é Atribuicao (atribuição)
                 if char == '=': return "EQ"
                 else:
-                    if char is not None: self.voltar_cursor()
+                    if char is not None: self.backtrack_cursor()
                     return "Atribuicao"
 
-            elif estado_atual == 22: # ! ou !=
+            elif current_state == 22: # ! ou !=
+                # Se o próximo caractere for '=', é DIF (diferente)
+                # senão, é NEG (negação)
                 if char == '=': return "DIF"
                 else:
-                    if char is not None: self.voltar_cursor()
+                    if char is not None: self.backtrack_cursor()
                     return "NEG"
 
-            elif estado_atual == 17: # / ou //
+            elif current_state == 17: # / ou //
+                # Se o próximo caractere for '/', é comentário de linha
+                # senão, é DIV (divisão)
+                # quando é comentário, consome até o fim da linha e reinicia o estado
                 if char == '/':
-                    while self.cursor < self.tamanho:
-                        c = self.consumir_char()
+                    while self.cursor < self.length:
+                        c = self.consume_char()
                         if c == '\n': break
-                    estado_atual = 0
-                    lexema = ""
+                    current_state = 0
+                    lexeme = ""
                     continue
                 else:
-                    if char is not None: self.voltar_cursor()
+                    if char is not None: self.backtrack_cursor()
                     return "DIV"
 
-            elif estado_atual == 24: # &&
+            elif current_state == 24: # &&
+                # Se o próximo caractere for '&', é AND (e lógico)
+                # senão, é erro léxico
                 if char == '&': return "AND"
                 else:
-                    print("Erro: Esperado '&' após '&'")
+                    print("Error: Expected '&' after '&'")
                     return None
 
-            elif estado_atual == 23: # ||
+            elif current_state == 23: # ||
+                # Se o próximo caractere for '|', é OR (ou lógico)
+                # senão, é erro léxico
                 if char == '|': return "OR"
                 else:
-                    print("Erro: Esperado '|' após '|'")
+                    print("Error: Expected '|' after '|'")
                     return None
 
 def main():
     if len(sys.argv) < 2:
-        print("Uso: python lexico.py <nome_do_arquivo>")
+        print("Usage: python lexico.py <filename>")
         return
-
-    nome_arquivo = sys.argv[1]
     
+    # Obter o nome do arquivo a partir dos argumentos da linha de comando
+    filename = sys.argv[1]
+    
+    
+    # Leitura do arquivo de entrada
     try:
-        with open(nome_arquivo, 'r') as f:
-            codigo_fonte = f.read()
+        with open(filename, 'r') as f:
+            source_code = f.read()
         
-        lexer = AnalisadorLexico(codigo_fonte)
-        lista_tokens = lexer.analisar()
+        # Análise Léxica
+        lexer = LexicalAnalyzer(source_code)
+        # Gera a lista de tokens
+        token_list = lexer.analyze()
         
-        saida_formatada = " ".join(lista_tokens)
-        nome_saida = nome_arquivo.split('.')[0] + ".lex"
+        # Formata a saída como uma string única separada por espaços
+        formatted_output = " ".join(token_list)
+        output_filename = "output.lex"
         
-        with open(nome_saida, 'w') as f_out:
-            f_out.write(saida_formatada)
+        # Escrita do arquivo de saída
+        with open(output_filename, 'w') as f_out:
+            f_out.write(formatted_output)
             
-        print(f"Análise concluída com sucesso!")
-        print(f"Entrada:\n{codigo_fonte}")
+        print(f"Analysis completed successfully!")
+        # Linha para debug do input
+        #print(f"Input:\n{source_code}")
+        #print("-" * 30)
+        print(f"Output:\n{formatted_output}")
         print("-" * 30)
-        print(f"Saída:\n{saida_formatada}")
-        print("-" * 30)
-        print(f"Arquivo gerado: {nome_saida}")
+        print(f"Generated file: {output_filename}")
 
     except FileNotFoundError:
-        print(f"Erro: Arquivo '{nome_arquivo}' não encontrado.")
+        print(f"Error: File '{filename}' not found.")
     except Exception as e:
-        print(f"Erro inesperado: {e}")
+        print(f"Unexpected error: {e}")
 
 if __name__ == "__main__":
     main()
