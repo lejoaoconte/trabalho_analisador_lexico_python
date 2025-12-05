@@ -1,6 +1,6 @@
 # Analisador Léxico em Python
 
-Um **Analisador Léxico** robusto implementado em Python, baseado em um Autômato Finito Determinístico (AFD), projetado para processar código em linguagem similar a C.
+Desenvolvendo um **Analisador Léxico** implementado em Python, baseado em um Autômato Finito Determinístico (AFD), projetado para processar código em linguagem similar a C.
 
 ### Visão Geral
 
