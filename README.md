@@ -1,6 +1,6 @@
 # Analisador Léxico em Python
 
-Um *Analisador Léxico* robusto implementado em Python, baseado em um Autômato Finito Determinístico (AFD), projetado para processar código em linguagem similar a C.
+Um **Analisador Léxico** robusto implementado em Python, baseado em um Autômato Finito Determinístico (AFD), projetado para processar código em linguagem similar a C.
 
 ### Visão Geral
 
@@ -10,13 +10,13 @@ O analisador léxico é a primeira fase do processo de compilação, responsáve
 
 O analisador é capaz de identificar e classificar:
 
-- ⁠**Palavras Reservadas:⁠** ⁠ int ⁠, ⁠ float ⁠, ⁠ char ⁠, ⁠ bool ⁠, ⁠ if ⁠, ⁠ return ⁠
+- ⁠**Palavras Reservadas:⁠** ⁠ int ⁠, float⁠, char⁠, bool, if⁠, return ⁠
 - ⁠**Identificadores:⁠** Nomes de variáveis (⁠ VAR ⁠)
 - ⁠**Números:⁠**
     - Inteiros (⁠ NUM_INT ⁠): ex. ⁠ 123 ⁠, ⁠ 0 ⁠, ⁠ 999 ⁠
-    - Ponto Flutuante (⁠ NUM_FLOAT ⁠): ex. ⁠ .5 ⁠, ⁠ 3.14 ⁠
+    - Ponto Flutuante (⁠ NUM_FLOAT ⁠): ex. .5⁠,⁠ 3.14 ⁠
 - ⁠**Literais:** 
-    - Caracteres (⁠ CHAR_TYPE ⁠): ex. ⁠ 'a' ⁠, ⁠ 'Z' ⁠, ⁠ '1' ⁠
+    - Caracteres (⁠ CHAR_TYPE ⁠): ex. ⁠ 'a', 'Z'⁠, '1' ⁠
   - Booleanos (⁠ BOOL_TYPE ⁠): com sensibilidade ao contexto para ⁠ 0 ⁠ e ⁠ 1
 - **⁠Operadores Aritméticos:** ⁠
     - + ⁠ (SUM)
